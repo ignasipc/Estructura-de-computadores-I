@@ -20,11 +20,14 @@ CODE:   DS.W    12
 
 START:
     CLR.W EPC
-    
-    
-    ;Volver a saltar a la etiqueta FETCH, en el caso de no se hayan 
-    ;procesado todas las einstrucciones del vector EMEM. ??????
-    
+
+FETCH:
+    ;--- IFETCH: INICIO FETCH
+        ;*** En esta seccion debeis introducir el codigo necesario para cargar
+        ;*** en el EIR la siguiente instruccion a ejecutar, indicada por el EPC,
+	    ;*** y dejar listo el EPC para que apunte a la siguiente instruccion
+	
+	        ; ESCRIBID VUESTRO CODIGO AQUI	    
     
     LEA.L   EMEM,A0 ;A0 DIRECCION DE EMEM
     LEA.L   CODE,A1 ;A1 DIRECCION DE CODE
@@ -40,15 +43,6 @@ YADECODIFICADO:
     
     DBRA    D0,RECORREREMEM
     BRA FDECOD          ;A PARTIR DE AQUI CODE CONTIENE LA CODIFICACION DE EMEM
-
-
-FETCH:
-    ;--- IFETCH: INICIO FETCH
-        ;*** En esta seccion debeis introducir el codigo necesario para cargar
-        ;*** en el EIR la siguiente instruccion a ejecutar, indicada por el EPC,
-	    ;*** y dejar listo el EPC para que apunte a la siguiente instruccion
-	
-	        ; ESCRIBID VUESTRO CODIGO AQUI	    
         
     ;--- FFETCH: FIN FETCH
     
