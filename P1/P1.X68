@@ -1,6 +1,6 @@
 *------------------------------------------------
 * Titulo : P1 (2023-2024) - Sieve of Eratosthenes
-* Autores: Elena Morey Martín y Ignasi Paredes Casasnovas
+* Autores: Elena Morey MartÃ­n y Ignasi Paredes Casasnovas
 *------------------------------------------------
     ORG $1000
 N:  EQU 10
@@ -159,13 +159,13 @@ P2APORDENADO:
     BNE P2NOES0   ;LA COMPONENTE DE P2 != 0
     
     ;SI ES 0 
-    MOVE.B  D0,-(A2)    ;LO AÑADIMOS AL FINAL DEL VECTOR P
+    MOVE.B  D0,-(A2)    ;LO AÃ‘ADIMOS AL FINAL DEL VECTOR P
     
     BRA FINCOPIARP2SIN0S
     
 P2NOES0:
     ADD.B   #1,D2      ;SI NO ES 0 TENEMOS UN NUMERO PRIMO Y SUMAMOS 1 A C
-    MOVE.B  D0,(A0)+    ;Y AÑADIMOS EL PRIMO AL PRINCIPIO DEL VECTOR DE P
+    MOVE.B  D0,(A0)+    ;Y AÃ‘ADIMOS EL PRIMO AL PRINCIPIO DEL VECTOR DE P
 
 FINCOPIARP2SIN0S:
 
