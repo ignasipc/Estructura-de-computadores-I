@@ -1,0 +1,884 @@
+*-----------------------------------------------------------
+* Title      : PRAFIN24
+* Written by : Ignasi Paredes Casasnovas y Elena Morey Martín
+* Date       : 26/05/2024
+* Description: Emulador de la SUIBC
+*-----------------------------------------------------------
+    ORG $1000
+EMEM:   DC.W $A00C,$00A0,$7002,$5000,$A80D,$00A0,$4420,$63FD
+        DC.W $00A0,$2060,$800E,$C000,$0003,$0004,$0000
+EIR:    DC.W 0 ;eregistro de instruccion
+EPC:    DC.W 0 ;econtador de programa
+ER0:    DC.W 0 ;eregistro R0
+ER1:    DC.W 0 ;eregistro R1
+ER2:    DC.W 0 ;eregistro R2
+ER3:    DC.W 0 ;eregistro R3
+ESR:    DC.W 0 ;eregistro de estado (00000000 00000ZNC)
+
+START:
+    CLR.W EPC
+
+FETCH:
+    ;--- IFETCH: INICIO FETCH
+        ;*** En esta seccion debeis introducir el codigo necesario para cargar
+        ;*** en el EIR la siguiente instruccion a ejecutar, indicada por el EPC,
+	    ;*** y dejar listo el EPC para que apunte a la siguiente instruccion
+	
+	        ; ESCRIBID VUESTRO CODIGO AQUI	    
+    
+    MOVE.W  EPC,D0
+    
+    MULU    #2,D0   ;2*EPC (ANTES DE AUMENTAR EPC)
+    LEA.L   EMEM,A0 ;A0 = @EMEM
+    ADD.W   D0,A0   ;A0 = @EMEM + 2*EPC ASÍ OBTENEMOS
+                    ;LA INSTRUCCIÓN A EJECUTAR
+    
+    MOVE.W  (A0),EIR    ;GUARDAMOS LA INSTRUCCIÓN A EJECUTAR EN EIR
+    
+    ADDQ    #1,EPC	;AUMENTO EL VALOR DEL EPC PARA QUE APUNTE A LA SIGUIENTE
+                    ;INSTRUCCIÓN A EJECUTAR
+    
+BRDECOD:
+    
+    MOVE.W  #0,-(SP)    ;GUARDAMOS ESPACIO PARA EL RESULTADO
+    MOVE.W  EIR,-(SP)   ;GUARDAMOS ESPACIO PARA EIR
+    
+    JSR DECOD
+    
+    ADD.L  #2,SP        ;QUITAMOS EIR DE LA PILA
+    MOVE.W  (SP)+,D1    ;SACAMOS EL RESULTADO DE LA PILA Y LO GUARDAMOS
+                        ;EN D1 PARA SALTAR A LA EJECUCIÓN CORRESPONDIENTE
+    
+    ;--- FFETCH: FIN FETCH
+    
+    
+    
+    ;--- IBRDECOD: INICIO SALTO A DECOD
+        ;*** En esta seccion debeis preparar la pila para llamar a la subrutina
+        ;*** DECOD, llamar a la subrutina, y vaciar la pila correctamente,
+        ;*** almacenando el resultado de la decodificacion en D1
+
+    	    ; ESCRIBID VUESTRO CODIGO AQUI    	    
+        
+    ;--- FBRDECOD: FIN SALTO A DECOD
+    
+    
+    
+    ;--- IBREXEC: INICIO SALTO A FASE DE EJECUCION
+        ;*** Esta seccion se usa para saltar a la fase de ejecucion
+        ;*** NO HACE FALTA MODIFICARLA
+    MULU #6,D1
+    MOVEA.L D1,A1
+    JMP JMPLIST(A1)
+JMPLIST:
+    JMP ESTO
+    JMP ELOA
+    JMP ECMP
+    JMP EADD
+    JMP ESUB
+    JMP ENOR
+    JMP ESET
+    JMP EADQ
+    JMP ETRA
+    JMP EJMZ
+    JMP EJMN
+    JMP EJMI
+    JMP EHLT
+    ;--- FBREXEC: FIN SALTO A FASE DE EJECUCION
+    
+    
+    
+    ;--- IEXEC: INICIO EJECUCION
+        ;*** En esta seccion debeis implementar la ejecucion de cada einstr.
+	
+	; ESCRIBID EN CADA ETIQUETA LA FASE DE EJECUCION DE CADA INSTRUCCION
+ESTO:
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #11,D0  ;MIRO EL BIT 11 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ STOR0       ;EN DESDE QUE EREGISTRO GUARDARA EN EMEMORIA
+    BRA STOR1
+    
+STOR0:
+    AND.L   #$FF,D0     ;GUARDO EN D0 LOS BITS DE LA DIRECCION DE LA EMEMORIA
+    
+    LEA.L   EMEM,A0     ;GUARDO LA DIRECCION DE EMEM PARA ALMACENAR EN @M
+    MULU    #2,D0       ;M = 2*D0, YA QUE LAS DIRECCIONES DE EMEMORIA
+    ADD.L   D0,A0       ;SE INCREMENTA DE 1 EN 1 PERO EN EL 68K "DE 2 EN 2"
+                        ;AHORA A0 = M
+    
+    MOVE.W  ER0,(A0)      ;M <- [ER0]
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+STOR1:
+    AND.L   #$FF,D0     ;GUARDO EN D0 LOS BITS DE LA DIRECCION DE LA EMEMORIA
+    
+    LEA.L   EMEM,A0     ;GUARDO LA DIRECCION DE EMEM PARA ALMACENAR EN @M
+    MULU    #2,D0       ;M = 2*D0, YA QUE LAS DIRECCIONES DE EMEMORIA
+    ADD.L   D0,A0       ;SE INCREMENTA DE 1 EN 1 PERO EN EL 68K "DE 2 EN 2"
+                        ;AHORA A0 = M
+    
+    MOVE.W  ER1,(A0)      ;M <- [ER1]
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+ELOA:
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #11,D0  ;MIRO EL BIT 11 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ LOAR0       ;EN QUE EREGISTRO LO CARGARA
+    BRA LOAR1
+    
+LOAR0:
+    AND.L   #$FF,D0     ;GUARDO EN D0 LOS BITS DE LA DIRECCION DE LA EMEMORIA
+    
+    LEA.L   EMEM,A0     ;GUARDO LA DIRECCION DE EMEM PARA IR A BUSCAR [M]
+    MULU    #2,D0       ;M = 2*D0, YA QUE LAS DIRECCIONES DE EMEMORIA
+    ADD.L   D0,A0       ;SE INCREMENTA DE 1 EN 1 PERO EN EL 68K "DE 2 EN 2"
+                        ;AHORA A0 = M
+    
+    MOVE.W  (A0),ER0     ;ER0 <- [M]
+    
+    MOVE.W  ER0,D0   ;GUARDAMOS ER0 DESPUES DE LA OPERACION PARA LA SUBRUTINA
+    
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+LOAR1:
+    AND.L   #$FF,D0     ;GUARDO EN D0 LOS BITS DE LA DIRECCION DE LA EMEMORIA
+    
+    LEA.L   EMEM,A0     ;GUARDO LA DIRECCION DE EMEM PARA IR A BUSCAR [M]
+    MULU    #2,D0       ;M = 2*D0, YA QUE LAS DIRECCIONES DE EMEMORIA
+    ADD.L   D0,A0       ;SE INCREMENTA DE 1 EN 1 PERO EN EL 68K "DE 2 EN 2"
+                        ;AHORA A0 = M
+    
+    MOVE.W  (A0),ER1     ;ER1 <- [M]
+    
+    MOVE.W  ER1,D0   ;GUARDAMOS ER1 DESPUES DE LA OPERACION PARA LA SUBRUTINA
+    
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+ECMP:
+;NOTA: Las restas en la m´aquina emulada se realizan de la siguiente forma:
+;A - B = A + (B¯ + 1)
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #6,D0   ;MIRO EL BIT 6 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ CMPR0       ;A QUE CONTENIDO DE EREGISTRO RESTAREMOS (R0 O R1)
+    BRA CMPR1
+    
+CMPR0:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER0,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R0] Y D1 = [RA]
+    
+    JSR RESTAEMULADA    ;SUBRUTINA DE USUARIO QUE HACE LA RESTA EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = FLAGS Y D1 = RESULTADO
+    ;EL RESULTADO NO LO GUARDAMOS PORQUE ES UN CMP Y NO NOS INTERESA
+    
+    MOVE.W  D0,D1   ;MUEVO LOS FLAGS A D1 PARA LA SUBRUTINA
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS FLAGS DE ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+CMPR1:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER1,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R1] Y D1 = [RA]
+    
+    JSR RESTAEMULADA    ;SUBRUTINA DE USUARIO QUE HACE LA RESTA EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = FLAGS Y D1 = RESULTADO
+    ;EL RESULTADO NO LO GUARDAMOS PORQUE ES UN CMP Y NO NOS INTERESA
+    
+    MOVE.W  D0,D1   ;MUEVO LOS FLAGS A D1 PARA LA SUBRUTINA
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS FLAGS DE ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+EADD:
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #6,D0   ;MIRO EL BIT 6 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ ADDR0       ;A QUE CONTENIDO DE EREGISTRO SUMAREMOS (R0 O R1)
+    BRA ADDR1
+    
+ADDR0:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER0,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R0] Y D1 = [RA]
+    
+    ADD.W   D1,D0   ;D0 <- [D0] + [D1]
+    MOVE.W  SR,D1   ;GUARDAMOS LOS FLAGS EN D1
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    
+    MOVE.W  D0,ER0  ;ER0 <- [D0]
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS EFLAGS DE ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+ADDR1:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER1,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R1] Y D1 = [RA]
+    
+    ADD.W   D1,D0   ;D0 <- [D0] + [D1]
+    MOVE.W  SR,D1   ;GUARDAMOS LOS FLAGS EN D1
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    
+    MOVE.W  D0,ER1  ;ER1 <- [D0]
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS EFLAGS EN ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+ESUB:
+
+------------------SUB R1,R0. ER0 incorrecto (0x000D)
+
+
+;NOTA: Las restas en la máquina emulada se realizan de la siguiente forma:
+;A - B = A + (B¯ + 1)
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #6,D0   ;MIRO EL BIT 6 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ SUBR0       ;A QUE CONTENIDO DE EREGISTRO RESTAREMOS (R0 O R1)
+    BRA SUBR1
+    
+SUBR0:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER0,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R0] Y D1 = [RA]
+    
+    JSR RESTAEMULADA    ;SUBRUTINA DE USUARIO QUE HACE LA RESTA EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = FLAGS Y D1 = RESULTADO
+    
+    MOVE.W  D1,ER0  ;R0 <- [R0] - [RA]
+    
+    MOVE.W  D0,D1   ;MUEVO LOS FLAGS A D1 PARA LA SUBRUTINA
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS FLAGS DE ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+SUBR1:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER1,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R1] Y D1 = [RA]
+    
+    JSR RESTAEMULADA    ;SUBRUTINA DE USUARIO QUE HACE LA RESTA EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = FLAGS Y D1 = RESULTADO
+    
+    MOVE.W  D1,ER1  ;R1 <- [R1] - [RA]
+    
+    MOVE.W  D0,D1   ;MUEVO LOS FLAGS A D1 PARA LA SUBRUTINA
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS FLAGS DE ESR
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+ENOR:
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    BTST.L  #6,D0   ;MIRO EL BIT 6 DE LA EINSTRUCCION (j) QUE INDICA
+    BEQ NORR0       ;A QUE CONTENIDO DE EREGISTRO RESTAREMOS (R0 O R1)
+    BRA NORR1
+    
+NORR0:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER0,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R0] Y D1 = [RA]
+    
+    JSR NOREMULADA      ;SUBRUTINA DE USUARIO QUE HACE LA NOR EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D1 = RESULTADO
+    
+    MOVE.W  D1,ER0  ;R0 <- [R0] NOR [RA]
+    
+    MOVE.W  ER0,D0   ;GUARDAMOS ER0 DESPUES DE LA OPERACION PARA LA SUBRUTINA
+    
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+                            ;COGE [D0] Y LO DEJA INVARIABLE
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+NORR1:
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    MOVE.W  ER1,D0
+    
+    ;A PARTIR DE AQUI TENEMOS D0 = [R0] Y D1 = [RA]
+    
+    JSR NOREMULADA      ;SUBRUTINA DE USUARIO QUE HACE LA NOR EMULADA
+                        ;Y ACTUALIZA LOS FLAGS
+    
+    ;A PARTIR DE AQUI TENEMOS D1 = RESULTADO
+    
+    MOVE.W  D1,ER1  ;R1 <- [R1] NOR [RA]
+    
+    MOVE.W  ER1,D0   ;GUARDAMOS ER1 DESPUES DE LA OPERACION PARA LA SUBRUTINA
+    
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+                            ;COGE [D0] Y LO DEJA INVARIABLE
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+ESET:
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    JSR OBTENERC    ;SUBRUTINA DE USUARIO PARA OBTENER C (CON EXT. DE SIGNO)
+    
+    ;A PARTIR DE AQUI DENEMOS [D0] = C (CON EXT. DE SIGNO)
+    
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+                            ;COGE [D0] Y LO DEJA INVARIABLE
+    
+    MOVE.W  EIR,D1  ;GUARDO EN D1 LA EINSTRUCCION PARA LA SUBRUTINA
+    JSR METERCONTENIDORB    ;SUBRUTINA DE USUARIO QUE GUARDA D0 EN RB
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+;-----------------------------------------------------------------------------
+EADQ:
+    
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    JSR OBTENERC    ;SUBRUTINA DE USUARIO PARA OBTENER C (CON EXT. DE SIGNO)
+    
+    ;A PARTIR DE AQUI DENEMOS [D0] = C (CON EXT. DE SIGNO)
+    
+    ;HACEMOS LA SUMA DE [RB] + C (CON EXT. DE SIGNO) Y LO GUARDAMOS EN D0
+    MOVE.W  EIR,D1
+    BTST    #1,D1   ;COMPRUEBA BIT 1
+    BEQ CADENARB0
+    BRA CADENARB1
+    
+CADENARB0:
+    BTST.L  #0,D1  ;COMPRUEBA BIT 0
+    BEQ CADENARB00
+    BRA CADENARB01
+    
+CADENARB1:
+    BTST.L  #0,D1  ;COMPRUEBA BIT 0
+    BEQ CADENARB10
+    BRA CADENARB11
+    
+    
+CADENARB00:
+    MOVE.W  ER0,D1  ;D1 = [R0]
+    ADD.W   D1,D0   ;[D0] = [R0] + [D0](C)
+    MOVE.W  SR,D1   ;GUARDO EN D1 LOS FLAGS
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    BRA FINOBTENERRBMASC
+    
+CADENARB01:
+    MOVE.W  ER1,D1  ;D1 = [R1]
+    ADD.W   D1,D0   ;[D0] = [R1] + [D0](C)
+    MOVE.W  SR,D1   ;GUARDO EN D1 LOS FLAGS
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    BRA FINOBTENERRBMASC
+
+CADENARB10:
+    MOVE.W  ER2,D1  ;D1 = [R2]
+    ADD.W   D1,D0   ;[D0] = [R2] + [D0](C)
+    MOVE.W  SR,D1   ;GUARDO EN D1 LOS FLAGS
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    BRA FINOBTENERRBMASC
+
+CADENARB11:
+    MOVE.W  ER3,D1  ;D1 = [R3]
+    ADD.W   D1,D0   ;[D0] = [R3] + [D0](C)
+    MOVE.W  SR,D1   ;GUARDO EN D1 LOS FLAGS
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    BRA FINOBTENERRBMASC
+
+
+FINOBTENERRBMASC:
+    ;A PARTIR DE AQUI DENEMOS [D0] = [RB] + C (CON EXT. DE SIGNO) Y [D1] = SR
+    
+    JSR FLAGS68KASUIBC  ;PASAMOS LOS FLAGS (NZ0C) A (0ZNC) = [D1]
+    MOVE.W  D1,ESR  ;ACTUALIZAMOS LOS FLAGS DE ESR
+    
+    MOVE.W  EIR,D1  ;GUARDO EN D1 LA EINSTRUCCION PARA LA SUBRUTINA
+    JSR METERCONTENIDORB    ;SUBRUTINA DE USUARIO QUE GUARDA D0 EN RB
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+;-----------------------------------------------------------------------------
+ETRA:
+
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+                            ;EN D0 TENEMOS LA EIR PARA LA SUBRUTINA
+    JSR OBTENERCONTENIDORA  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+    
+    MOVE.W  D1,D0   ;GUARDO EN D0 EL CONTENIDO DE RA PARA AMBAS SUBRUTINAS
+        
+    JSR ACTUALIZARZNSEGUNRX ;SUBRUTINA DE USUARIO QUE ACTUALIZA LOS EFLAGS
+                            ;Z Y N SEGUN EL EREGISTRO ACTUALIZADO
+                            ;COGE [D0] Y LO DEJA INVARIABLE
+    
+    MOVE.W  EIR,D1  ;GUARDO EN D1 LA EINSTRUCCION PARA LA SUBRUTINA
+    JSR METERCONTENIDORB    ;SUBRUTINA DE USUARIO QUE GUARDA D0 EN RB
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+;-----------------------------------------------------------------------------
+EJMZ:       ;00000ZNC
+
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    MOVE.W  ESR,D1  ;GUARDO EN D1 LOS FLAGS
+    
+    BTST    #2,D1   ;COMPRUEBA EL BIT 2 (Z)
+    BEQ FLAGZ0
+    BRA FLAGZ1
+
+FLAGZ0:
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+FLAGZ1:
+    JSR OBTENERMJMP ;SUBRUTINA DE USUARIO PARA OBTENER EN D0 LA DIRECCION M
+    
+    ;A PARTIR DE AQUI TENEMOS EN [D0] = M
+    
+    MOVE.W  D0,EPC    ;EPC <- [M]
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+;-----------------------------------------------------------------------------
+EJMN:       ;00000ZNC
+
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    MOVE.W  ESR,D1  ;GUARDO EN D1 LOS FLAGS
+    
+    BTST    #1,D1   ;COMPRUEBA EL BIT 1 (N)
+    BEQ FLAGN0
+    BRA FLAGN1
+
+FLAGN0:
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+    
+FLAGN1:
+    JSR OBTENERMJMP ;SUBRUTINA DE USUARIO PARA OBTENER EN D0 LA DIRECCION M
+    
+    ;A PARTIR DE AQUI TENEMOS EN [D0] = M
+    
+    MOVE.W  D0,EPC    ;EPC <- [M]
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+;-----------------------------------------------------------------------------
+EJMI:
+
+    MOVE.W  EIR,D0  ;GUARDO EN D0 LA EINSTRUCCION
+    
+    JSR OBTENERMJMP ;SUBRUTINA DE USUARIO PARA OBTENER EN D0 LA DIRECCION M
+    
+    ;A PARTIR DE AQUI TENEMOS EN [D0] = M
+    
+    MOVE.W  D0,EPC    ;EPC <- [M]
+    
+    BRA FETCH   ;HEMOS ACABADO LA FASE DE EJECUCION Y VOLVEMOS
+                ;A LA FASE DE FETCH
+
+;-----------------------------------------------------------------------------
+EHLT:
+    SIMHALT   ;DETENEMOS LA MAQUINA
+
+;-----------------------------------------------------------------------------
+    ;--- FEXEC: FIN EJECUCION
+    
+    
+
+    ;--- ISUBR: INICIO SUBRUTINAS
+        ;*** Aqui debeis incluir las subrutinas que necesite vuestra solucion
+        ;*** SALVO DECOD, que va en la siguiente seccion
+
+	        ; ESCRIBID VUESTRO CODIGO AQUI
+	        
+OBTENERCONTENIDORA:  ;SUBRUTINA DE USUARIO QUE DEJA D1 = [RA]
+                     ;TENEMOS EN D0 EL EIR
+    BTST.L  #5,D0  ;COMPRUEBA BIT 5
+    BEQ CADENAA0
+    BRA CADENAA1
+
+CADENAA0:
+    BTST.L  #4,D0  ;COMPRUEBA BIT 4
+    BEQ CADENAA00
+    BRA CADENAA01
+
+CADENAA1:	        
+    BTST.L  #4,D0  ;COMPRUEBA BIT 4
+    BEQ CADENAA10
+    BRA CADENAA11
+
+
+CADENAA00:
+    MOVE.W  ER0,D1  ;D1 = [R0] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+
+CADENAA01:
+    MOVE.W  ER1,D1  ;D1 = [R1] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+
+CADENAA10:
+    MOVE.W  ER2,D1  ;D1 = [R2] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+
+CADENAA11:
+    MOVE.W  ER3,D1  ;D1 = [R3] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+
+;-----------------------------------------------------------------------------
+RESTAEMULADA:   ;D0 = [RJ] Y D1 = [RA]
+    NOT.W   D1
+    ADD.W   #1,D1
+    ADD.W   D0,D1   ;[RJ] - [RA] = [RJ] + ([RA]' + 1). RESULTADO EN D1
+    MOVE.W  SR,D0   ;GUARDAMOS LOS FLAGS EN D0
+    AND.L   #$D,D1   ;OBTENEMOS SOLO LOS 3 BITS N, Z Y C(0000 NZ0C)
+    
+    RTS         ;D0 = FLAGS Y D1 = RESULTADO
+
+;-----------------------------------------------------------------------------
+NOREMULADA:     ;D0 = [RJ] Y D1 = [RA]
+    OR.W    D0,D1   ;D1 <- [R0] OR [RA]
+    NOT.W   D1      ;D1 <- ([R0] OR [RA])'
+    
+    RTS     ;D1 = RESULTADO
+
+;-----------------------------------------------------------------------------
+METERCONTENIDORB:   ;[D0] = CONTENIDO Y [D1] = [EIR]
+    BTST.L  #1,D1  ;COMPRUEBA BIT 1
+    BEQ CADENAB0
+    BRA CADENAB1
+
+CADENAB0:
+    BTST.L  #0,D1  ;COMPRUEBA BIT 0
+    BEQ CADENAB00
+    BRA CADENAB01
+    
+CADENAB1:
+    BTST.L  #0,D1  ;COMPRUEBA BIT 0
+    BEQ CADENAB10
+    BRA CADENAB11
+    
+CADENAB00:
+    MOVE.W  D0,ER0  ;ER0 <- [D0] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+    
+CADENAB01:
+    MOVE.W  D0,ER1  ;ER1 <- [D0] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+    
+CADENAB10:
+    MOVE.W  D0,ER2  ;ER2 <- [D0] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+    
+CADENAB11:
+    MOVE.W  D0,ER3  ;ER3 <- [D0] Y VOLVEMOS DE LA SUBRUTINA
+    RTS
+    
+;-----------------------------------------------------------------------------
+OBTENERC:   ;SUBRUTINA DE USUARIO QUE DEJA [D0] = C (CON EXT. SIGNO)
+            ;[D0] = [EIR]
+    
+    AND.W   #$3FC,D0    ;GUARDO EN D0 LOS BITS DE C
+    LSR.W   #2,D0       ;DESPLAZAMOS A LA DERECHA 2 BITS
+    EXT.W   D0          ;EXTENDEMOS EL SIGNO A C DE 8 A 16 BITS
+    
+    RTS     ;[D0] = C (CON EXT. DE SIGNO)
+    
+;-----------------------------------------------------------------------------
+OBTENERMJMP:    ;SUBRUTINA DE USUARIO QUE DEJA EN D0 LA DIRECCION M EN LAS
+                ;INSTRUCCIONES DE SALTO
+    AND.W   #$FF0,D0    ;[D0] = M (SIN DESPLAZAR A LA DERECHA)
+    LSR.W   #4,D0       ;DESPLAZAMOS A LA DERECHA 4 BITS
+    
+    RTS     ;[D0] = M
+    
+;-----------------------------------------------------------------------------
+ACTUALIZARZNSEGUNRX:    ;[D0] = RX      (00000ZNC)  PUEDO USAR D1
+    MOVE.W  ESR,D1   ;GUARDAMOS LOS FLAGS ACTUALES PARA NO VARIAR C
+    CMP.W   #0,D0    ;COMRPOBAMOS SI TODO ES 0
+    BEQ ZES1
+
+    BCLR    #2,D1  ;SI NO HA DADO NEGATIVO, ACTUALIZAMOS EL FLAG Z = 0
+    
+    BRA ACTUALIZARN
+    
+ZES1:
+    BSET    #2,D1  ;SI HA DADO NEGATIVO, ACTUALIZAMOS EL FLAG Z = 1
+    
+ACTUALIZARN:
+    BTST  #15,D0  ;COMPRUEBA BIT 15 (MAS SIGNIFICATIVO)
+    BEQ NES0
+    BRA NES1
+
+NES0:
+    BCLR    #1,D1  ;SI EL BIT MAS SIGNIFICATIVO ES 0, N = 0
+    MOVE.W  D1,ESR  ;GUARDAMOS LOS CAMBIOS DE FLAGS EN ESR
+    
+    RTS     ;VOLVEMOS
+    
+NES1:
+    BSET    #1,D1  ;SI EL BIT MAS SIGNIFICATIVO ES 1, N = 1
+    MOVE.W  D1,ESR  ;GUARDAMOS LOS CAMBIOS DE FLAGS EN ESR
+    
+    RTS     ;VOLVEMOS
+
+;-----------------------------------------------------------------------------
+FLAGS68KASUIBC:     ;EN [D1] TENEMOS LOS FLAGS DE 68K (NZ0C)
+    BTST    #3,D1
+    BEQ NFLAG0
+    BRA NFLAG1
+    
+NFLAG0:
+    AND.W   #7,D1   ;SI N ES 0, SOLO GUARDAMOS LOS 3 ULTIMOS BITS
+                    ;DE TAL FORMA QUEDA (0Z0C)
+    RTS     ;VOLVEMOS
+    
+NFLAG1:
+    AND.W   #7,D1   ;SI N ES 1, SOLO GUARDAMOS LOS 3 ULTIMOS BITS
+                    ;DE TAL FORMA QUEDA (0Z0C)
+    ADD.W   #2,D1   ;AÑADIMOS 2 EN LOS FLAGS (0Z1C)
+    
+    RTS ;VOLVEMOS
+    
+    ;--- FSUBR: FIN SUBRUTINAS
+    
+    
+
+    ;--- IDECOD: INICIO DECOD
+        ;*** Tras la etiqueta DECOD, debeis implementar la subrutina de 
+        ;*** decodificacion, que debera ser de libreria, siguiendo la interfaz
+        ;*** especificada en el enunciado
+DECOD:
+	        ; ESCRIBID VUESTRO CODIGO AQUI
+
+*--------------------------------------------------------
+    MOVE.L  D0,-(SP)    ;GUARDAMOS EL REGISTRO D0, YA QUE LO VAMOS A USAR
+    
+    MOVE.W  8(SP),D0    ;METEMOS EIR EN EL REGISTRO D0
+    
+    ;DECODIFICAMOS Y ESCRIBIMOS EN LA PILA EL RESULTADO
+
+    BTST.L  #15,D0  ;COMPRUEBA BIT 15 (MAS SIGNIFICATIVO)
+    BEQ CADENADEC0
+    BRA CADENADEC1
+    
+CADENADEC0: ;DEC = 0
+
+    BTST.L  #14,D0
+    BEQ CADENADEC00
+    BRA CADENADEC01
+    
+CADENADEC1: ;DEC = 1
+    
+    BTST.L  #14,D0
+    BEQ CADENADEC10
+    BRA CADENADEC11
+
+CADENADEC00: ;DEC = 00
+
+    BTST.L  #13,D0
+    BEQ CADENADEC000
+    BRA CADENADEC001
+    
+CADENADEC01: ;DEC = 01
+
+    BTST.L  #13,D0
+    BEQ CADENADEC010
+    BRA CADENADEC011
+    
+CADENADEC10: ;DEC = 10
+
+    BTST.L  #13,D0
+    BEQ CADENADEC100
+    BRA CADENADEC101
+    
+CADENADEC11: ;DEC = 11 = INSTRUCCION 12 (HLT)
+    
+    MOVE.W  #12,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC000: ;DEC = 000
+
+    BTST.L  #12,D0
+    BEQ CADENADEC0000
+    BRA CADENADEC0001
+
+CADENADEC001: ;DEC = 001 = INSTRUCCION 11 (JMI)
+
+    MOVE.W  #11,10(SP)
+    BRA YADECODIFICADO
+
+CADENADEC010: ;DEC = 010
+
+    BTST.L  #12,D0
+    BEQ CADENADEC0100
+    BRA CADENADEC0101
+    
+CADENADEC011: ;DEC = 011
+
+    BTST.L  #12,D0
+    BEQ CADENADEC0110
+    BRA CADENADEC0111
+    
+CADENADEC100: ;DEC = 100 = INSTRUCCION 0 (STO)
+
+    MOVE.W  #0,10(SP)
+    BRA YADECODIFICADO
+
+CADENADEC101: ;DEC = 101 = INSTRUCCION 1 (LOA)
+
+    MOVE.W  #1,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC0000: ;DEC = 0000 = INSTRUCCION 9 (JMZ)
+    
+    MOVE.W  #9,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC0001: ;DEC = 0001 = INSTRUCCION 10 (JMN)
+    
+    MOVE.W  #10,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC0100: ;DEC = 0100
+
+    BTST.L  #11,D0
+    BEQ CADENADEC01000
+    BRA CADENADEC01001
+    
+CADENADEC0101: ;DEC = 0101 = INSTRUCCION 6 (SET)
+    
+    MOVE.W  #6,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC0110: ;DEC = 0110 = INSTRUCCION 7 (ADQ)
+
+    MOVE.W  #7,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC0111: ;DEC = 0111 = INSTRUCCION 8 (TRA)
+
+    MOVE.W  #8,10(SP)
+    BRA YADECODIFICADO
+
+CADENADEC01000: ;DEC = 01000
+
+    BTST.L  #10,D0
+    BEQ CADENADEC010000
+    BRA CADENADEC010001
+
+CADENADEC01001: ;DEC = 01001
+
+    BTST.L  #10,D0
+    BEQ CADENADEC010010
+    BRA CADENADEC010011
+
+CADENADEC010000: ;DEC = 010000 = INSTRUCCION 2 (CMP)
+
+    MOVE.W  #2,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC010001: ;DEC = 010001 = INSTRUCCION 3 (ADD)
+
+    MOVE.W  #3,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC010010: ;DEC = 010010 = INSTRUCCION 4 (SUB)
+
+    MOVE.W  #4,10(SP)
+    BRA YADECODIFICADO
+    
+CADENADEC010011: ;DEC = 010011 = INSTRUCCION 5 (NOR)
+
+    MOVE.W  #5,10(SP)
+    BRA YADECODIFICADO
+        
+    
+YADECODIFICADO: ;RECUPERAMOS LOS VALORES DE LOS REGISTROS USADOS Y VOLVEMOS
+    MOVE.L  (SP)+,D0
+    RTS
+    
+*--------------------------------------------------------
+    ;--- FDECOD: FIN DECOD
+    END    START
